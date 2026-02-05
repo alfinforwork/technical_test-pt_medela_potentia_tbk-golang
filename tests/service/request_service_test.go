@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"technical-test/src/model"
 	svc "technical-test/src/service"
 	"testing"
@@ -9,47 +8,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gorm.io/datatypes"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 type RequestServiceTestSuite struct {
-	suite.Suite
-	db              *gorm.DB
+	BaseTestSuite
 	requestService  *svc.RequestService
 	workflowService *svc.WorkflowService
 	stepService     *svc.StepService
-	testCounter     int
 }
 
 func (suite *RequestServiceTestSuite) SetupTest() {
-	suite.testCounter++
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	err := suite.InitializeDB()
 	suite.NoError(err)
 
-	err = db.AutoMigrate(
-		&model.User{},
-		&model.Workflow{},
-		&model.Step{},
-		&model.Request{},
-	)
-	suite.NoError(err)
-
-	suite.db = db
-	suite.workflowService = svc.NewWorkflowService(db)
-	suite.stepService = svc.NewStepService(db, suite.workflowService)
-	suite.requestService = svc.NewRequestService(db, suite.workflowService, suite.stepService)
-}
-
-func (suite *RequestServiceTestSuite) createTestWorkflow() model.Workflow {
-	workflow := model.Workflow{Name: fmt.Sprintf("Workflow %d", suite.testCounter)}
-	suite.db.Create(&workflow)
-	return workflow
+	suite.requestService, suite.workflowService, suite.stepService = suite.CreateRequestServiceWithDeps()
 }
 
 // Test CreateRequest with valid amount
 func (suite *RequestServiceTestSuite) TestCreateRequest_ValidAmount() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100, "approval_type": "API"}`))
 	step := model.Step{
@@ -58,7 +35,7 @@ func (suite *RequestServiceTestSuite) TestCreateRequest_ValidAmount() {
 		Actor:      "Manager",
 		Conditions: conditions,
 	}
-	suite.db.Create(&step)
+	suite.DB.Create(&step)
 
 	// Create request with valid amount
 	request, err := suite.requestService.CreateRequest(int(workflow.ID), 150)
@@ -71,7 +48,7 @@ func (suite *RequestServiceTestSuite) TestCreateRequest_ValidAmount() {
 
 // Test CreateRequest with invalid amount
 func (suite *RequestServiceTestSuite) TestCreateRequest_InvalidAmount() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	// Create request with invalid amount
 	_, err := suite.requestService.CreateRequest(int(workflow.ID), -50)
@@ -82,7 +59,7 @@ func (suite *RequestServiceTestSuite) TestCreateRequest_InvalidAmount() {
 
 // Test CreateRequest with zero amount
 func (suite *RequestServiceTestSuite) TestCreateRequest_ZeroAmount() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	_, err := suite.requestService.CreateRequest(int(workflow.ID), 0)
 
@@ -99,7 +76,7 @@ func (suite *RequestServiceTestSuite) TestCreateRequest_NonExistentWorkflow() {
 
 // Test CreateRequest with amount below minimum requirement
 func (suite *RequestServiceTestSuite) TestCreateRequest_BelowMinimum() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100, "approval_type": "API"}`))
 	step := model.Step{
@@ -108,7 +85,7 @@ func (suite *RequestServiceTestSuite) TestCreateRequest_BelowMinimum() {
 		Actor:      "Manager",
 		Conditions: conditions,
 	}
-	suite.db.Create(&step)
+	suite.DB.Create(&step)
 
 	// Create request with amount below minimum
 	request, err := suite.requestService.CreateRequest(int(workflow.ID), 50)
@@ -121,7 +98,7 @@ func (suite *RequestServiceTestSuite) TestCreateRequest_BelowMinimum() {
 
 // Test CreateRequest with multi-level workflow
 func (suite *RequestServiceTestSuite) TestCreateRequest_MultiLevelWorkflow() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	// Create step 1
 	conditions1 := datatypes.JSON([]byte(`{"min_amount": 100, "approval_type": "API"}`))
@@ -131,7 +108,7 @@ func (suite *RequestServiceTestSuite) TestCreateRequest_MultiLevelWorkflow() {
 		Actor:      "Manager",
 		Conditions: conditions1,
 	}
-	suite.db.Create(&step1)
+	suite.DB.Create(&step1)
 
 	// Create step 2
 	conditions2 := datatypes.JSON([]byte(`{"min_amount": 200, "approval_type": "MANUAL"}`))
@@ -141,7 +118,7 @@ func (suite *RequestServiceTestSuite) TestCreateRequest_MultiLevelWorkflow() {
 		Actor:      "Director",
 		Conditions: conditions2,
 	}
-	suite.db.Create(&step2)
+	suite.DB.Create(&step2)
 
 	// Create request with amount meeting step 1 requirement but not step 2
 	request, err := suite.requestService.CreateRequest(int(workflow.ID), 150)
@@ -153,7 +130,7 @@ func (suite *RequestServiceTestSuite) TestCreateRequest_MultiLevelWorkflow() {
 
 // Test ApproveRequest with API approval type
 func (suite *RequestServiceTestSuite) TestApproveRequest_APIApprovalType() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100, "approval_type": "API"}`))
 	step := model.Step{
@@ -162,7 +139,7 @@ func (suite *RequestServiceTestSuite) TestApproveRequest_APIApprovalType() {
 		Actor:      "Manager",
 		Conditions: conditions,
 	}
-	suite.db.Create(&step)
+	suite.DB.Create(&step)
 
 	request := model.Request{
 		WorkflowID:  workflow.ID,
@@ -170,7 +147,7 @@ func (suite *RequestServiceTestSuite) TestApproveRequest_APIApprovalType() {
 		Status:      "PENDING",
 		Amount:      150,
 	}
-	suite.db.Create(&request)
+	suite.DB.Create(&request)
 
 	// Approve request
 	approvedRequest, err := suite.requestService.ApproveRequest(int(request.ID))
@@ -181,7 +158,7 @@ func (suite *RequestServiceTestSuite) TestApproveRequest_APIApprovalType() {
 
 // Test ApproveRequest with MANUAL approval type
 func (suite *RequestServiceTestSuite) TestApproveRequest_ManualApprovalType() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100, "approval_type": "MANUAL"}`))
 	step := model.Step{
@@ -190,7 +167,7 @@ func (suite *RequestServiceTestSuite) TestApproveRequest_ManualApprovalType() {
 		Actor:      "Manager",
 		Conditions: conditions,
 	}
-	suite.db.Create(&step)
+	suite.DB.Create(&step)
 
 	request := model.Request{
 		WorkflowID:  workflow.ID,
@@ -198,7 +175,7 @@ func (suite *RequestServiceTestSuite) TestApproveRequest_ManualApprovalType() {
 		Status:      "PENDING",
 		Amount:      50,
 	}
-	suite.db.Create(&request)
+	suite.DB.Create(&request)
 
 	// Approve request (should approve regardless of amount for MANUAL type)
 	approvedRequest, err := suite.requestService.ApproveRequest(int(request.ID))
@@ -209,7 +186,7 @@ func (suite *RequestServiceTestSuite) TestApproveRequest_ManualApprovalType() {
 
 // Test ApproveRequest with invalid request state
 func (suite *RequestServiceTestSuite) TestApproveRequest_InvalidState() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	request := model.Request{
 		WorkflowID:  workflow.ID,
@@ -217,7 +194,7 @@ func (suite *RequestServiceTestSuite) TestApproveRequest_InvalidState() {
 		Status:      "APPROVED",
 		Amount:      100,
 	}
-	suite.db.Create(&request)
+	suite.DB.Create(&request)
 
 	// Try to approve already approved request
 	_, err := suite.requestService.ApproveRequest(int(request.ID))
@@ -228,7 +205,7 @@ func (suite *RequestServiceTestSuite) TestApproveRequest_InvalidState() {
 
 // Test RejectRequest
 func (suite *RequestServiceTestSuite) TestRejectRequest() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	request := model.Request{
 		WorkflowID:  workflow.ID,
@@ -236,7 +213,7 @@ func (suite *RequestServiceTestSuite) TestRejectRequest() {
 		Status:      "PENDING",
 		Amount:      100,
 	}
-	suite.db.Create(&request)
+	suite.DB.Create(&request)
 
 	// Reject request
 	rejectedRequest, err := suite.requestService.RejectRequest(int(request.ID))
@@ -247,7 +224,7 @@ func (suite *RequestServiceTestSuite) TestRejectRequest() {
 
 // Test RejectRequest with invalid state
 func (suite *RequestServiceTestSuite) TestRejectRequest_InvalidState() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	request := model.Request{
 		WorkflowID:  workflow.ID,
@@ -255,7 +232,7 @@ func (suite *RequestServiceTestSuite) TestRejectRequest_InvalidState() {
 		Status:      "REJECTED",
 		Amount:      100,
 	}
-	suite.db.Create(&request)
+	suite.DB.Create(&request)
 
 	// Try to reject already rejected request
 	_, err := suite.requestService.RejectRequest(int(request.ID))
@@ -266,7 +243,7 @@ func (suite *RequestServiceTestSuite) TestRejectRequest_InvalidState() {
 
 // Test GetRequestByID
 func (suite *RequestServiceTestSuite) TestGetRequestByID() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	request := model.Request{
 		WorkflowID:  workflow.ID,
@@ -274,7 +251,7 @@ func (suite *RequestServiceTestSuite) TestGetRequestByID() {
 		Status:      "PENDING",
 		Amount:      100,
 	}
-	suite.db.Create(&request)
+	suite.DB.Create(&request)
 
 	// Get request
 	fetchedRequest, err := suite.requestService.GetRequestByID(int(request.ID))
@@ -293,7 +270,7 @@ func (suite *RequestServiceTestSuite) TestGetRequestByID_NotFound() {
 
 // Test request accumulation
 func (suite *RequestServiceTestSuite) TestRequestAccumulation() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100, "approval_type": "API"}`))
 	step := model.Step{
@@ -302,7 +279,7 @@ func (suite *RequestServiceTestSuite) TestRequestAccumulation() {
 		Actor:      "Manager",
 		Conditions: conditions,
 	}
-	suite.db.Create(&step)
+	suite.DB.Create(&step)
 
 	// Create first request
 	request1, err := suite.requestService.CreateRequest(int(workflow.ID), 60)

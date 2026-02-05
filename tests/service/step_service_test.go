@@ -1,52 +1,29 @@
 package service
 
 import (
-	"fmt"
-	"technical-test/src/model"
 	svc "technical-test/src/service"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gorm.io/datatypes"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 type StepServiceTestSuite struct {
-	suite.Suite
-	db              *gorm.DB
+	BaseTestSuite
 	stepService     *svc.StepService
 	workflowService *svc.WorkflowService
-	testCounter     int
 }
 
 func (suite *StepServiceTestSuite) SetupTest() {
-	suite.testCounter++
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	err := suite.InitializeDB()
 	suite.NoError(err)
 
-	err = db.AutoMigrate(
-		&model.User{},
-		&model.Workflow{},
-		&model.Step{},
-		&model.Request{},
-	)
-	suite.NoError(err)
-
-	suite.db = db
-	suite.workflowService = svc.NewWorkflowService(db)
-	suite.stepService = svc.NewStepService(db, suite.workflowService)
-}
-
-func (suite *StepServiceTestSuite) createTestWorkflow() model.Workflow {
-	workflow := model.Workflow{Name: fmt.Sprintf("Test Workflow %d", suite.testCounter)}
-	suite.db.Create(&workflow)
-	return workflow
+	suite.stepService, suite.workflowService = suite.CreateStepServiceWithDeps()
 }
 
 func (suite *StepServiceTestSuite) TestCreateStep_Valid() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100, "approval_type": "API"}`))
 	step, err := suite.stepService.CreateStep(int(workflow.ID), "Manager", conditions)
@@ -65,7 +42,7 @@ func (suite *StepServiceTestSuite) TestCreateStep_NonExistentWorkflow() {
 }
 
 func (suite *StepServiceTestSuite) TestCreateStep_IncrementalLevels() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100}`))
 
@@ -83,7 +60,7 @@ func (suite *StepServiceTestSuite) TestCreateStep_IncrementalLevels() {
 }
 
 func (suite *StepServiceTestSuite) TestGetNextLevelForWorkflow() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100}`))
 
@@ -97,7 +74,7 @@ func (suite *StepServiceTestSuite) TestGetNextLevelForWorkflow() {
 }
 
 func (suite *StepServiceTestSuite) TestFindStepsByWorkflowID() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100}`))
 
@@ -118,7 +95,7 @@ func (suite *StepServiceTestSuite) TestFindStepsByWorkflowID_Empty() {
 }
 
 func (suite *StepServiceTestSuite) TestFindStepByLevelAndWorkflowID() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100}`))
 	createdStep, _ := suite.stepService.CreateStep(int(workflow.ID), "Manager", conditions)
@@ -131,7 +108,7 @@ func (suite *StepServiceTestSuite) TestFindStepByLevelAndWorkflowID() {
 }
 
 func (suite *StepServiceTestSuite) TestFindStepByLevelAndWorkflowID_NotFound() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	_, err := suite.stepService.FindStepByLevelAndWorkflowID(99, int(workflow.ID))
 
@@ -139,7 +116,7 @@ func (suite *StepServiceTestSuite) TestFindStepByLevelAndWorkflowID_NotFound() {
 }
 
 func (suite *StepServiceTestSuite) TestGetStepByID() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100}`))
 	createdStep, _ := suite.stepService.CreateStep(int(workflow.ID), "Manager", conditions)
@@ -157,7 +134,7 @@ func (suite *StepServiceTestSuite) TestGetStepByID_NotFound() {
 }
 
 func (suite *StepServiceTestSuite) TestUpdateStep() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100}`))
 	createdStep, _ := suite.stepService.CreateStep(int(workflow.ID), "Manager", conditions)
@@ -178,7 +155,7 @@ func (suite *StepServiceTestSuite) TestUpdateStep_NotFound() {
 }
 
 func (suite *StepServiceTestSuite) TestDeleteStep() {
-	workflow := suite.createTestWorkflow()
+	workflow := suite.CreateTestWorkflow()
 
 	conditions := datatypes.JSON([]byte(`{"min_amount": 100}`))
 	createdStep, _ := suite.stepService.CreateStep(int(workflow.ID), "Manager", conditions)
