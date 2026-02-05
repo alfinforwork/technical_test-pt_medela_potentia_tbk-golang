@@ -74,13 +74,28 @@ func (sc *StepController) FindStepsByWorkflowID(c fiber.Ctx) error {
 		return response.Error(c, "Workflow not found", nil)
 	}
 
-	steps, err := sc.StepService.FindStepsByWorkflowID(workflowId)
+	params := utils.GetPaginationParams(c)
+
+	steps, total, err := sc.StepService.FindStepsByWorkflowIDWithPagination(workflowId, params.Page, params.PageSize, params.Search)
 	if err != nil {
 		c.Status(fiber.StatusInternalServerError)
 		return response.Error(c, "Failed to retrieve steps", nil)
 	}
 
-	return response.Success(c, "Steps retrieved successfully", steps, nil)
+	totalPages := utils.CalculateTotalPages(total, params.PageSize)
+	meta := utils.PaginationMeta{
+		Page:       params.Page,
+		PageSize:   params.PageSize,
+		Total:      total,
+		TotalPages: totalPages,
+	}
+
+	data := fiber.Map{
+		"steps":      steps,
+		"pagination": meta,
+	}
+
+	return response.Success(c, "Steps retrieved successfully", data, nil)
 }
 
 func (sc *StepController) FindStepByID(c fiber.Ctx) error {

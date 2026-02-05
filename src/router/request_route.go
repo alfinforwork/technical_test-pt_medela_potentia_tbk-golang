@@ -13,6 +13,7 @@ func SetupRequestRoutes(router fiber.Router, db *gorm.DB, ws *service.WorkflowSe
 	requestController := controller.NewRequestController(*rs, *ws)
 
 	requestGroup.Post("/", requestController.CreateRequest)
+	requestGroup.Get("/", requestController.FindAllRequests)
 	requestGroup.Get("/:requestId", requestController.GetRequestByID)
 	requestGroup.Post("/:requestId/approve", requestController.ApproveRequest)
 	requestGroup.Post("/:requestId/reject", requestController.RejectRequest)

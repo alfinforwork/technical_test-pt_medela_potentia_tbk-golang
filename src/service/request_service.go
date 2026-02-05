@@ -107,6 +107,32 @@ func (rs *RequestService) GetRequestByID(id int) (model.Request, error) {
 	return request, result.Error
 }
 
+func (rs *RequestService) FindAllRequestsWithPagination(page, pageSize int, search, status string) ([]model.Request, int64, error) {
+	var requests []model.Request
+	var total int64
+
+	query := rs.db
+	if search != "" {
+		query = query.Where("workflow_id = ?", search)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if err := query.Model(&model.Request{}).Count(&total).Error; err != nil {
+		return requests, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	result := query.
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&requests)
+
+	return requests, total, result.Error
+}
+
 func (rs *RequestService) ApproveRequest(id int) (model.Request, error) {
 	var request model.Request
 

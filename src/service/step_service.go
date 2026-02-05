@@ -56,6 +56,29 @@ func (ss *StepService) FindStepsByWorkflowID(workflowID int) ([]model.Step, erro
 	return steps, result.Error
 }
 
+func (ss *StepService) FindStepsByWorkflowIDWithPagination(workflowID int, page, pageSize int, search string) ([]model.Step, int64, error) {
+	var steps []model.Step
+	var total int64
+
+	query := ss.db.Where("workflow_id = ?", workflowID)
+	if search != "" {
+		query = query.Where("actor LIKE ?", "%"+search+"%")
+	}
+
+	if err := query.Model(&model.Step{}).Count(&total).Error; err != nil {
+		return steps, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	result := query.
+		Order("level ASC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&steps)
+
+	return steps, total, result.Error
+}
+
 func (ss *StepService) FindStepByLevelAndWorkflowID(level uint, workflowID int) (model.Step, error) {
 	var step model.Step
 	result := ss.db.Where("level = ? AND workflow_id = ?", level, workflowID).First(&step)

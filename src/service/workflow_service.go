@@ -35,6 +35,29 @@ func (ws *WorkflowService) FindAllWorkflows() ([]model.Workflow, error) {
 	return workflows, result.Error
 }
 
+func (ws *WorkflowService) FindAllWorkflowsWithPagination(page, pageSize int, search string) ([]model.Workflow, int64, error) {
+	var workflows []model.Workflow
+	var total int64
+
+	query := ws.db
+	if search != "" {
+		query = query.Where("name LIKE ?", "%"+search+"%")
+	}
+
+	if err := query.Model(&model.Workflow{}).Count(&total).Error; err != nil {
+		return workflows, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	result := query.Select("id", "name", "created_at").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&workflows)
+
+	return workflows, total, result.Error
+}
+
 func (ws *WorkflowService) GetWorkflowByID(id int) (model.Workflow, error) {
 	var workflow model.Workflow
 	result := ws.db.First(&workflow, id)

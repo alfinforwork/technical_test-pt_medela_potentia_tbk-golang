@@ -40,6 +40,32 @@ func (rc *RequestController) CreateRequest(c fiber.Ctx) error {
 	return response.Success(c, "Request created successfully", request, nil)
 }
 
+func (rc *RequestController) FindAllRequests(c fiber.Ctx) error {
+	params := utils.GetPaginationParams(c)
+	status := c.Query("status")
+
+	requests, total, err := rc.RequestService.FindAllRequestsWithPagination(params.Page, params.PageSize, params.Search, status)
+	if err != nil {
+		c.Status(fiber.StatusInternalServerError)
+		return response.Error(c, "Failed to retrieve requests", nil)
+	}
+
+	totalPages := utils.CalculateTotalPages(total, params.PageSize)
+	meta := utils.PaginationMeta{
+		Page:       params.Page,
+		PageSize:   params.PageSize,
+		Total:      total,
+		TotalPages: totalPages,
+	}
+
+	data := fiber.Map{
+		"requests":   requests,
+		"pagination": meta,
+	}
+
+	return response.Success(c, "Requests retrieved successfully", data, nil)
+}
+
 func (rc *RequestController) GetRequestByID(c fiber.Ctx) error {
 	requestId, err := strconv.Atoi(c.Params("requestId"))
 	if err != nil {

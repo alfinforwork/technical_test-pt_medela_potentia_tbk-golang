@@ -36,12 +36,28 @@ func (wc *WorkflowController) CreateWorkflow(c fiber.Ctx) error {
 }
 
 func (wc *WorkflowController) FindAllWorkflows(c fiber.Ctx) error {
-	workflows, err := wc.WorkflowService.FindAllWorkflows()
+	params := utils.GetPaginationParams(c)
+
+	workflows, total, err := wc.WorkflowService.FindAllWorkflowsWithPagination(params.Page, params.PageSize, params.Search)
 	if err != nil {
 		c.Status(fiber.StatusInternalServerError)
 		return response.Error(c, "Failed to retrieve workflows", nil)
 	}
-	return response.Success(c, "Workflows retrieved successfully", workflows, nil)
+
+	totalPages := utils.CalculateTotalPages(total, params.PageSize)
+	meta := utils.PaginationMeta{
+		Page:       params.Page,
+		PageSize:   params.PageSize,
+		Total:      total,
+		TotalPages: totalPages,
+	}
+
+	data := fiber.Map{
+		"workflows":  workflows,
+		"pagination": meta,
+	}
+
+	return response.Success(c, "Workflows retrieved successfully", data, nil)
 }
 
 func (wc *WorkflowController) GetWorkflowByID(c fiber.Ctx) error {
