@@ -18,7 +18,7 @@ type RequestServiceTestSuite struct {
 }
 
 func (suite *RequestServiceTestSuite) SetupTest() {
-	err := suite.InitializeDB()
+	err := suite.InitializeDB("request_service")
 	suite.NoError(err)
 
 	suite.requestService, suite.workflowService, suite.stepService = suite.CreateRequestServiceWithDeps()

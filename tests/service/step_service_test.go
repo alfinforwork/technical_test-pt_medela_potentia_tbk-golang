@@ -16,7 +16,7 @@ type StepServiceTestSuite struct {
 }
 
 func (suite *StepServiceTestSuite) SetupTest() {
-	err := suite.InitializeDB()
+	err := suite.InitializeDB("step_service")
 	suite.NoError(err)
 
 	suite.stepService, suite.workflowService = suite.CreateStepServiceWithDeps()

@@ -16,17 +16,32 @@ type BaseTestSuite struct {
 	TestCounter int
 }
 
-func (suite *BaseTestSuite) InitializeDB() error {
+func (suite *BaseTestSuite) InitializeDB(suiteName string) error {
 	if suite.DB != nil {
 		suite.TestCounter++
 		return nil
 	}
 
 	suite.TestCounter++
-	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{})
+
+	if suiteName == "" {
+		suiteName = "default"
+	}
+
+	// Use named shared in-memory database to avoid "no such table" across pooled connections.
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", suiteName)
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return err
 	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
+	}
+	// Keep a single connection to ensure the in-memory schema is preserved.
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
 
 	err = db.AutoMigrate(
 		&model.User{},

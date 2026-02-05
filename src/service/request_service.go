@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type RequestService struct {
@@ -108,40 +109,80 @@ func (rs *RequestService) GetRequestByID(id int) (model.Request, error) {
 
 func (rs *RequestService) ApproveRequest(id int) (model.Request, error) {
 	var request model.Request
-	if err := rs.db.First(&request, id).Error; err != nil {
-		return request, err
-	}
 
-	if request.Status != "PENDING" {
-		return request, ErrInvalidRequestState
-	}
+	returnValue := model.Request{}
+	err := rs.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&request, id).Error; err != nil {
+			return err
+		}
 
-	step, err := rs.stepService.FindStepByLevelAndWorkflowID(request.CurrentStep, int(request.WorkflowID))
-	if err != nil {
-		return request, err
-	}
+		if request.Status != "PENDING" {
+			return ErrInvalidRequestState
+		}
 
-	conditions, err := parseConditions(step.Conditions)
-	if err != nil {
-		return request, err
-	}
-
-	if conditions.ApprovalType == "API" {
-		accumulatedMinAmount, err := rs.getAccumulatedMinAmount(int(request.WorkflowID), request.CurrentStep)
+		step, err := rs.findStepByLevelAndWorkflowIDTx(tx, request.CurrentStep, int(request.WorkflowID))
 		if err != nil {
-			return request, err
+			return err
 		}
 
-		if request.Amount >= accumulatedMinAmount {
-			request.Status = "APPROVED"
-			return request, rs.db.Save(&request).Error
+		conditions, err := parseConditions(step.Conditions)
+		if err != nil {
+			return err
 		}
 
-		return request, nil
+		if conditions.ApprovalType == "API" {
+			accumulatedMinAmount, err := rs.getAccumulatedMinAmountTx(tx, int(request.WorkflowID), request.CurrentStep)
+			if err != nil {
+				return err
+			}
+
+			if request.Amount < accumulatedMinAmount {
+				returnValue = request
+				return nil
+			}
+		}
+
+		request.Status = "APPROVED"
+		if err := tx.Save(&request).Error; err != nil {
+			return err
+		}
+
+		returnValue = request
+		return nil
+	})
+
+	if err != nil {
+		return request, err
 	}
-	request.Status = "APPROVED"
-	return request, rs.db.Save(&request).Error
 
+	return returnValue, nil
+
+}
+
+func (rs *RequestService) findStepByLevelAndWorkflowIDTx(tx *gorm.DB, level uint, workflowID int) (model.Step, error) {
+	var step model.Step
+	result := tx.Where("level = ? AND workflow_id = ?", level, workflowID).First(&step)
+	return step, result.Error
+}
+
+func (rs *RequestService) getAccumulatedMinAmountTx(tx *gorm.DB, workflowID int, currentLevel uint) (float64, error) {
+	var total float64 = 0
+
+	for level := uint(1); level <= currentLevel; level++ {
+		step, err := rs.findStepByLevelAndWorkflowIDTx(tx, level, workflowID)
+		if err != nil {
+			return 0, err
+		}
+
+		minAmount, err := parseMinAmount(step.Conditions)
+		if err != nil {
+			return 0, err
+		}
+
+		total += minAmount
+	}
+
+	return total, nil
 }
 
 func (rs *RequestService) RejectRequest(id int) (model.Request, error) {
