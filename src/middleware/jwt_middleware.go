@@ -3,7 +3,7 @@ package middleware
 import (
 	"strings"
 	"technical-test/src/response"
-	"technical-test/src/service"
+	"technical-test/src/usecase"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -17,7 +17,7 @@ func JWTProtected() fiber.Handler {
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		token, claims, err := service.ParseToken(tokenString)
+		token, claims, err := usecase.ParseToken(tokenString)
 		if err != nil || token == nil || !token.Valid {
 			c.Status(fiber.StatusUnauthorized)
 			return response.Error(c, "Invalid token", nil)

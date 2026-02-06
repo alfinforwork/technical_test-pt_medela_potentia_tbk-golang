@@ -1,0 +1,533 @@
+basePath: /
+definitions:
+  response.LoginResponse:
+    properties:
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      user:
+        $ref: '#/definitions/response.UserResponse'
+    type: object
+  response.ResponseError:
+    description: Error response object
+    properties:
+      data: {}
+      message:
+        type: string
+      status:
+        example: error
+        type: string
+    type: object
+  response.ResponseSuccess:
+    description: Success response object
+    properties:
+      data: {}
+      message:
+        type: string
+      status:
+        example: success
+        type: string
+    type: object
+  response.UserResponse:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: John Doe
+        type: string
+    type: object
+host: localhost:8000
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+    url: http://www.example.com/support
+  description: API for managing workflows, steps, and requests
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Workflow Management API
+  version: "1.0"
+paths:
+  /v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password, returns JWT token
+      parameters:
+      - description: Login Request
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ResponseSuccess'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.LoginResponse'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      summary: Login user
+      tags:
+      - Auth
+  /v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with name, email, and password
+      parameters:
+      - description: Register Request
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            name:
+              type: string
+            password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User registered successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "400":
+          description: Validation error" example("message":"Invalid input")
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      summary: Register a new user
+      tags:
+      - Auth
+  /v1/requests:
+    get:
+      consumes:
+      - application/json
+      description: Get all requests with pagination and optional status filtering
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      - description: Search by request ID
+        in: query
+        name: search
+        type: string
+      - description: Filter by status (pending, approved, rejected)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Requests retrieved successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: List all requests
+      tags:
+      - Requests
+    post:
+      consumes:
+      - application/json
+      description: Submit a new request for a workflow
+      parameters:
+      - description: Create Request
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            amount:
+              type: number
+            workflow_id:
+              type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Request created successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: Create a new request
+      tags:
+      - Requests
+  /v1/requests/{requestId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific request by its ID
+      parameters:
+      - description: Request ID
+        in: path
+        name: requestId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Request retrieved successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "400":
+          description: Invalid request ID
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "404":
+          description: Request not found
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: Get request by ID
+      tags:
+      - Requests
+  /v1/requests/{requestId}/approve:
+    post:
+      consumes:
+      - application/json
+      description: Approve a pending request
+      parameters:
+      - description: Request ID
+        in: path
+        name: requestId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Request approved successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "400":
+          description: Invalid request ID
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "404":
+          description: Request not found
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: Approve a request
+      tags:
+      - Requests
+  /v1/requests/{requestId}/reject:
+    post:
+      consumes:
+      - application/json
+      description: Reject a pending request
+      parameters:
+      - description: Request ID
+        in: path
+        name: requestId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Request rejected successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "400":
+          description: Invalid request ID
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "404":
+          description: Request not found
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: Reject a request
+      tags:
+      - Requests
+  /v1/workflows:
+    get:
+      consumes:
+      - application/json
+      description: Get all workflows with pagination support
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      - description: Search by workflow name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Workflows retrieved successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: List all workflows
+      tags:
+      - Workflows
+    post:
+      consumes:
+      - application/json
+      description: Create a new workflow with a given name
+      parameters:
+      - description: Create Workflow Request
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Workflow created successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: Create a new workflow
+      tags:
+      - Workflows
+  /v1/workflows/{workflowId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific workflow by its ID
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: workflowId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Workflow retrieved successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "400":
+          description: Invalid workflow ID
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "404":
+          description: Workflow not found
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: Get workflow by ID
+      tags:
+      - Workflows
+  /v1/workflows/{workflowId}/steps:
+    get:
+      consumes:
+      - application/json
+      description: Get all steps for a specific workflow with pagination support
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: workflowId
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      - description: Search by step actor
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Steps retrieved successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "400":
+          description: Invalid workflow ID
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "404":
+          description: Workflow not found
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: List all steps in a workflow
+      tags:
+      - Steps
+    post:
+      consumes:
+      - application/json
+      description: Add a new step to an existing workflow with actor and optional
+        conditions
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: workflowId
+        required: true
+        type: integer
+      - description: Create Step Request
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            actor:
+              type: string
+            conditions:
+              type: object
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Step created successfully
+          schema:
+            $ref: '#/definitions/response.ResponseSuccess'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "404":
+          description: Workflow not found
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ResponseError'
+      security:
+      - Bearer: []
+      summary: Create a new step in a workflow
+      tags:
+      - Steps
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

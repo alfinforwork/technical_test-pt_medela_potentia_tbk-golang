@@ -1,9 +1,10 @@
-package service
+package usecase
 
 import (
 	"fmt"
 	"technical-test/src/model"
-	svc "technical-test/src/service"
+	"technical-test/src/repository"
+	"technical-test/src/usecase"
 
 	"github.com/stretchr/testify/suite"
 	"gorm.io/driver/sqlite"
@@ -39,7 +40,7 @@ func (suite *BaseTestSuite) InitializeDB(suiteName string) error {
 	if err != nil {
 		return err
 	}
-	// Keep a single connection to ensure the in-memory schema is preserved.
+
 	sqlDB.SetMaxOpenConns(1)
 	sqlDB.SetMaxIdleConns(1)
 
@@ -63,15 +64,22 @@ func (suite *BaseTestSuite) CreateTestWorkflow() model.Workflow {
 	return workflow
 }
 
-func (suite *BaseTestSuite) CreateRequestServiceWithDeps() (*svc.RequestService, *svc.WorkflowService, *svc.StepService) {
-	workflowService := svc.NewWorkflowService(suite.DB)
-	stepService := svc.NewStepService(suite.DB, workflowService)
-	requestService := svc.NewRequestService(suite.DB, workflowService, stepService)
-	return requestService, workflowService, stepService
+func (suite *BaseTestSuite) CreateRequestUsecaseWithDeps() (usecase.RequestUsecase, usecase.WorkflowUsecase, usecase.StepUsecase) {
+	workflowRepo := repository.NewWorkflowRepository(suite.DB)
+	stepRepo := repository.NewStepRepository(suite.DB)
+	requestRepo := repository.NewRequestRepository(suite.DB)
+
+	workflowUsecase := usecase.NewWorkflowUsecase(workflowRepo)
+	stepUsecase := usecase.NewStepUsecase(stepRepo, workflowRepo)
+	requestUsecase := usecase.NewRequestUsecase(requestRepo, stepRepo, workflowRepo)
+	return requestUsecase, workflowUsecase, stepUsecase
 }
 
-func (suite *BaseTestSuite) CreateStepServiceWithDeps() (*svc.StepService, *svc.WorkflowService) {
-	workflowService := svc.NewWorkflowService(suite.DB)
-	stepService := svc.NewStepService(suite.DB, workflowService)
-	return stepService, workflowService
+func (suite *BaseTestSuite) CreateStepUsecaseWithDeps() (usecase.StepUsecase, usecase.WorkflowUsecase) {
+	workflowRepo := repository.NewWorkflowRepository(suite.DB)
+	stepRepo := repository.NewStepRepository(suite.DB)
+
+	workflowUsecase := usecase.NewWorkflowUsecase(workflowRepo)
+	stepUsecase := usecase.NewStepUsecase(stepRepo, workflowRepo)
+	return stepUsecase, workflowUsecase
 }

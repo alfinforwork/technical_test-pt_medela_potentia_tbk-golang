@@ -1,19 +1,24 @@
-package service
+package usecase
 
 import (
 	"errors"
-	"time"
-
 	"technical-test/src/config"
 	"technical-test/src/model"
+	"technical-test/src/repository"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-type AuthService struct {
-	db *gorm.DB
+type AuthUsecase interface {
+	Register(name, email, password string) (model.User, error)
+	Login(email, password string) (string, model.User, error)
+}
+
+type authUsecase struct {
+	userRepo repository.UserRepository
 }
 
 var (
@@ -22,15 +27,17 @@ var (
 	ErrJWTSecretMissing   = errors.New("jwt secret is not configured")
 )
 
-func NewAuthService(db *gorm.DB) *AuthService {
-	return &AuthService{db: db}
+func NewAuthUsecase(userRepo repository.UserRepository) AuthUsecase {
+	return &authUsecase{
+		userRepo: userRepo,
+	}
 }
 
-func (as *AuthService) Register(name, email, password string) (model.User, error) {
-	var existing model.User
-	if err := as.db.Where("email = ?", email).First(&existing).Error; err == nil {
+func (uc *authUsecase) Register(name, email, password string) (model.User, error) {
+	existing, err := uc.userRepo.FindByEmail(email)
+	if err == nil && existing.ID != 0 {
 		return model.User{}, ErrEmailExists
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+	} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return model.User{}, err
 	}
 
@@ -44,12 +51,17 @@ func (as *AuthService) Register(name, email, password string) (model.User, error
 		Email:        email,
 		PasswordHash: string(hash),
 	}
-	return user, as.db.Create(&user).Error
+
+	if err := uc.userRepo.Create(&user); err != nil {
+		return model.User{}, err
+	}
+
+	return user, nil
 }
 
-func (as *AuthService) Login(email, password string) (string, model.User, error) {
-	var user model.User
-	if err := as.db.Where("email = ?", email).First(&user).Error; err != nil {
+func (uc *authUsecase) Login(email, password string) (string, model.User, error) {
+	user, err := uc.userRepo.FindByEmail(email)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", model.User{}, ErrInvalidCredentials
 		}

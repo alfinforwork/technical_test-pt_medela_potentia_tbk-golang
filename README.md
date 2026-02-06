@@ -74,6 +74,82 @@ Gunakan header:
 - `POST /v1/requests/:requestId/approve`
 - `POST /v1/requests/:requestId/reject`
 
+## Swagger API Documentation
+
+### Mengakses Dokumentasi Swagger
+
+Setelah aplikasi berjalan, buka browser dan akses:
+
+```
+http://localhost:8000/swagger
+```
+
+Swagger JSON specification tersedia di:
+
+```
+http://localhost:8000/swagger.json
+```
+
+### Fitur Swagger UI
+
+Swagger UI menyediakan:
+
+1. **Dokumentasi Lengkap**: Setiap endpoint disertai deskripsi, parameter, request/response body, dan contoh response.
+2. **Try It Out**: Fitur untuk menguji API langsung dari browser tanpa tools tambahan.
+3. **Schema Definition**: Visualisasi struktur request dan response dalam bentuk yang mudah dipahami.
+4. **Authentication**: Support untuk JWT Bearer token authentication. Masukkan token di interface Authorize button.
+
+### Menggunakan Swagger untuk Testing
+
+1. Buka Swagger UI di `http://localhost:8000/swagger`
+2. Untuk protected endpoints, klik tombol **"Authorize"** dan masukkan JWT token:
+   ```
+   Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   ```
+3. Setelah authorized, semua protected endpoints dapat diakses
+4. Klik endpoint yang ingin ditest, lalu klik **"Try it out"**
+5. Masukkan request parameters atau body
+6. Klik **"Execute"** untuk mengirim request
+7. Response akan ditampilkan di bawah beserta status code dan response body
+
+### Contoh Response Format
+
+**Login Success Response:**
+```json
+{
+  "status": "success",
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZmluZm9yd29ya0BnbWFpbC5jb20iLCJleHAiOjE3NzA1MjI5MzAsImlhdCI6MTc3MDM0MjkzMCwic3ViIjoxfQ.HxyTFhapS1M_zWH-2BnT7wyyZCUeUWDMr2oxT_U2584",
+    "user": {
+      "id": 1,
+      "name": "alfin",
+      "email": "alfinforwork@gmail.com"
+    }
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "status": "error",
+  "message": "invalid email or password",
+  "data": null
+}
+```
+
+### Regenerasi Dokumentasi Swagger
+
+Jika menambah atau mengubah endpoint, regenerasi dokumentasi dengan command:
+
+```bash
+cd src
+swag init -g main.go -o ../docs
+```
+
+Dokumentasi akan di-update secara otomatis di `docs/swagger.json` dan `docs/swagger.yaml`.
+
 ## Penjelasan Design Decision
 - **Layered architecture**: pemisahan `controller`, `service`, `model`, dan `router` untuk memudahkan maintenance dan testing.
 - **Service layer**: logika bisnis approval ditempatkan di `service` agar reusable dan mudah diuji.
