@@ -1,4 +1,4 @@
-package router
+package handler
 
 import (
 	"technical-test/src/controller"
@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupStepRoutes(router fiber.Router, db *gorm.DB, ws *service.WorkflowService, ss *service.StepService) {
+func SetupStepHandlers(router fiber.Router, db *gorm.DB, ws *service.WorkflowService, ss *service.StepService) {
 	stepGroup := router.Group("/workflows/:workflowId/steps")
 	stepController := controller.NewStepController(*ws, *ss)
 

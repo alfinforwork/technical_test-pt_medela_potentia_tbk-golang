@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"technical-test/src/config"
 	"technical-test/src/database"
-	"technical-test/src/router"
+	"technical-test/src/handler"
 	"technical-test/src/utils"
 
 	"github.com/gofiber/fiber/v3"
@@ -20,7 +20,7 @@ func main() {
 	defer closeDatabase(db)
 
 	// Setup routes
-	router.Routes(app, db)
+	handler.Routes(app, db)
 
 	PORT := strconv.Itoa(config.AppPort)
 	if PORT == "" {

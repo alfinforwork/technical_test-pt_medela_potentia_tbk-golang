@@ -1,4 +1,4 @@
-package router
+package handler
 
 import (
 	"technical-test/src/controller"
@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupRequestRoutes(router fiber.Router, db *gorm.DB, ws *service.WorkflowService, ss *service.StepService, rs *service.RequestService) {
+func SetupRequestHandlers(router fiber.Router, db *gorm.DB, ws *service.WorkflowService, ss *service.StepService, rs *service.RequestService) {
 	requestGroup := router.Group("/requests")
 	requestController := controller.NewRequestController(*rs, *ws)
 

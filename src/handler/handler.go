@@ -1,4 +1,4 @@
-package router
+package handler
 
 import (
 	"technical-test/src/middleware"
@@ -15,11 +15,11 @@ func Routes(app *fiber.App, db *gorm.DB) {
 	as := service.NewAuthService(db)
 
 	v1 := app.Group("/v1")
-	SetupAuthRoutes(v1, db, as)
+	SetupAuthHandlers(v1, db, as)
 
 	protected := v1.Group("/", middleware.JWTProtected())
-	SetupWorkflowRoutes(protected, db, ws)
-	SetupStepRoutes(protected, db, ws, ss)
-	SetupRequestRoutes(protected, db, ws, ss, rs)
+	SetupWorkflowHandlers(protected, db, ws)
+	SetupStepHandlers(protected, db, ws, ss)
+	SetupRequestHandlers(protected, db, ws, ss, rs)
 
 }

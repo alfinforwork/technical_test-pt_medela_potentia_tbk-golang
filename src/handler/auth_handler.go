@@ -1,4 +1,4 @@
-package router
+package handler
 
 import (
 	"technical-test/src/controller"
@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupAuthRoutes(router fiber.Router, db *gorm.DB, as *service.AuthService) {
+func SetupAuthHandlers(router fiber.Router, db *gorm.DB, as *service.AuthService) {
 	authGroup := router.Group("/auth")
 	authController := controller.NewAuthController(*as)
 
