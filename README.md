@@ -151,12 +151,17 @@ swag init -g main.go -o ../docs
 Dokumentasi akan di-update secara otomatis di `docs/swagger.json` dan `docs/swagger.yaml`.
 
 ## Penjelasan Design Decision
-- **Layered architecture**: pemisahan `controller`, `service`, `model`, dan `router` untuk memudahkan maintenance dan testing.
-- **Service layer**: logika bisnis approval ditempatkan di `service` agar reusable dan mudah diuji.
-- **GORM**: ORM untuk mempercepat pengelolaan database dan migrasi model.
-- **Fiber**: framework HTTP ringan dengan performa baik.
-- **JWT**: autentikasi sederhana untuk protected endpoints.
-- **Environment-based config**: konfigurasi via `.env` / env vars supaya mudah di-deploy.
+- **Arsitektur berlapis**: pemisahan `handler`, `usecase`, `repository`, `model`, dan `routes` untuk memudahkan maintenance, pengujian, dan pemisahan tanggung jawab.
+- **`handler`**: bertanggung jawab terhadap HTTP layer — parsing request, validasi input ringan, mapping ke `usecase`, dan membentuk response.
+- **`usecase` (service layer)**: tempat logika bisnis approval berada; menjaga aturan bisnis terpusat sehingga mudah diuji secara unit dan reusable oleh berbagai handler.
+- **`repository`**: abstraksi akses database menggunakan GORM; semua query, mapping model, dan pengelolaan transaksi ditempatkan di sini.
+- **GORM**: dipilih untuk kemudahan migrasi model, query builder sederhana, dan interoperabilitas dengan MySQL/SQLite (mempermudah test in-memory).
+- **Fiber**: framework HTTP ringan yang menyediakan performa baik dan middleware mudah dipasang (dipakai pada `src/main.go` dan `routes`).
+- **JWT**: otentikasi stateless melalui middleware (`middleware/jwt_middleware.go`) untuk melindungi endpoint yang butuh autentikasi.
+- **Konfigurasi berbasis environment**: konfigurasi aplikasi dibaca dari `.env` / env vars agar mudah di-deploy pada berbagai environment (dev/staging/prod).
+- **Transaksi & concurrency**: operasi kritis (mis. approve request) dijalankan dalam transaksi database di layer `usecase`/`repository` dengan mekanisme locking/atomic update untuk mencegah double approval dan race condition.
+- **Testing**: unit test menargetkan `usecase` dan `repository` dengan SQLite in-memory untuk kecepatan; struktur kode memungkinkan mocking repository pada level usecase.
+- **Trade-offs**: implementasi sederhana tanpa DI container full-featured, JWT tanpa mekanisme rotation/blacklist, dan asumsi single service instance — keputusan ini mempercepat pengembangan pada tugas teknikal ini.
 
 ## Concurrency (Approve Endpoint)
 - **Implementasi**: approval dijalankan di dalam database transaction dengan row-level lock (`SELECT ... FOR UPDATE`) pada data request.
